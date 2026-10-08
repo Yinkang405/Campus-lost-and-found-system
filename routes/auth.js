@@ -2,15 +2,13 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const passport = require('passport');
-// ADD THIS LINE - Import autoBackup
-const autoBackup = require('../utils/autoBackup');
+const logger = require('../utils/simpleLogger');
 
 const isAuthenticated = (req, res, next) => {
     if (req.isAuthenticated()) return next();
     res.status(401).json({ success: false, message: 'Please login first' });
 };
 
-// Register new user - WITH AUTO BACKUP
 router.post('/register', async (req, res) => {
     try {
         const { username, email, password, full_name, student_id } = req.body;
@@ -24,12 +22,11 @@ router.post('/register', async (req, res) => {
         const user = new User({ username, email, password, full_name, student_id });
         const userId = await user.save();
         
-        // 🔥 AUTO BACKUP - Trigger backup after new user registration
-        await autoBackup.onDatabaseChange('USER_CREATED', { userId, username });
+        logger.userRegister(username);
         
         res.status(201).json({ success: true, message: 'Registration successful! Please login.', userId });
     } catch (error) {
-        console.error('Registration error:', error);
+        logger.error('Registration failed');
         res.status(500).json({ success: false, message: 'Error during registration' });
     }
 });
@@ -40,6 +37,9 @@ router.post('/login', (req, res, next) => {
         if (!user) return res.status(401).json({ success: false, message: info.message });
         req.logIn(user, (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Login error' });
+            
+            logger.userLogin(user.username);
+            
             return res.json({
                 success: true,
                 message: 'Login successful',
@@ -56,8 +56,12 @@ router.post('/login', (req, res, next) => {
 });
 
 router.get('/logout', (req, res) => {
+    const username = req.user?.username;
     req.logout((err) => {
         if (err) return res.status(500).json({ success: false, message: 'Logout error' });
+        
+        if (username) logger.userLogout(username);
+        
         res.json({ success: true, message: 'Logged out successfully' });
     });
 });

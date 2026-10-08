@@ -29,8 +29,6 @@ class Item {
     // Create new item
     async save() {
         try {
-            console.log('Saving item with user_id:', this.user_id);
-            
             const [result] = await db.execute(
                 `INSERT INTO items (title, description, category, location, date, contact_info, status, image_path, user_id) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -53,11 +51,9 @@ class Item {
         }
     }
 
-    // Get all items with optional filters - WITH DEBUGGING
+    // Get all items with optional filters - CLEAN VERSION (no debug logs)
     static async findAll(filters = {}) {
         try {
-            console.log('🔍 Item.findAll called with filters:', filters);
-            
             let query = `
                 SELECT items.*, users.username, users.full_name 
                 FROM items 
@@ -77,18 +73,11 @@ class Item {
             }
 
             query += ' ORDER BY items.created_at DESC';
-            
-            console.log('📝 Executing query:', query);
-            console.log('📝 With params:', params);
 
             const [rows] = await db.execute(query, params);
-            console.log(`✅ Query returned ${rows.length} rows`);
-            
             return rows;
         } catch (error) {
-            console.error('❌ Error in findAll:', error);
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
+            console.error('Error in findAll:', error);
             throw error;
         }
     }
@@ -103,7 +92,6 @@ class Item {
                  WHERE items.id = ?`,
                 [id]
             );
-            
             return rows.length > 0 ? rows[0] : null;
         } catch (error) {
             console.error('Error in findById:', error);

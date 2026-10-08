@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Campus Lost & Found - Quest International University</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style id="deferred-styles">
         /* Additional styles can be loaded later */
@@ -25,7 +25,6 @@
             <nav>
                 <ul>
                     <li><a href="/" class="active"><i class="bi bi-house"></i> Home</a></li>
-                    <!-- UPDATED: Added onclick login check -->
                     <li><a href="/add-item" onclick="return checkLoginBeforeReport(event);"><i class="bi bi-plus-circle"></i> Report Item</a></li>
                     <li id="authLinks">
                         <a href="/auth"><i class="bi bi-person"></i> Login</a>
@@ -46,7 +45,6 @@
             <div class="filter-section">
                 <h3><i class="bi bi-search"></i> Search Items</h3>
                 
-                <!-- Search Bar -->
                 <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                     <input type="text" 
                            id="searchInput" 
@@ -61,14 +59,12 @@
                     </button>
                 </div>
 
-                <!-- Advanced Filters Toggle -->
                 <div style="margin-bottom: 15px;">
                     <button class="btn btn-secondary" id="toggleFilters" style="width: 100%;">
                         <i class="bi bi-funnel"></i> Advanced Filters
                     </button>
                 </div>
 
-                <!-- Advanced Filters (hidden by default) -->
                 <div id="advancedFilters" style="display: none;">
                     <div class="form-row">
                         <div class="form-group">
@@ -113,10 +109,8 @@
                     </div>
                 </div>
 
-                <!-- Search Results Message (will appear here) -->
                 <div id="searchResultsMsg" style="margin-top: 15px;"></div>
 
-                <!-- Quick Filter Buttons -->
                 <div class="filter-buttons" style="margin-top: 20px;">
                     <button class="filter-btn active" data-filter="all">
                         <i class="bi bi-list"></i> All Items
@@ -130,15 +124,12 @@
                 </div>
             </div>
 
-            <!-- Loading Spinner -->
             <div id="loadingSpinner" class="spinner" style="display: none;"></div>
 
-            <!-- Items Grid -->
             <div id="itemsContainer" class="items-grid"></div>
         </section>
     </main>
 
-    <!-- Delete Confirmation Modal -->
     <div id="deleteModal" class="modal">
         <div class="modal-content">
             <span class="close-modal">&times;</span>
@@ -157,7 +148,7 @@
         </div>
     </footer>
 
-    <script src="js/main.js"></script>
+    <script src="/js/main.js"></script>
     
 </body>
 </html>

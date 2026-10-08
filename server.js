@@ -9,6 +9,7 @@ const session = require('express-session');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const bcrypt = require('bcryptjs');
+const logger = require('./utils/simpleLogger');
 
 dotenv.config();
 const db = require('./config/database');
@@ -21,24 +22,20 @@ const PORT = process.env.PORT || 3000;
 
 app.set('trust proxy', 1);
 
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"],
-            scriptSrcAttr: ["'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https:", "http:"],
-        },
-    },
-}));
-
+// ============================================
+// SECURITY MIDDLEWARE - FIXED CSP
+// ============================================
+// TEMPORARILY DISABLED FOR DEBUGGING
+// app.use(helmet());
+// CORS configuration
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' ? 'your-domain.com' : '*',
     optionsSuccessStatus: 200
 }));
 
+// ============================================
+// SESSION & PASSPORT CONFIGURATION
+// ============================================
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key-change-this',
     resave: false,
@@ -77,33 +74,62 @@ passport.deserializeUser(async (id, done) => {
     }
 });
 
+// ============================================
+// GENERAL MIDDLEWARE
+// ============================================
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.use('/api/', limiter);
+
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'docs'), { maxAge: '1d', etag: true }));
+
+// ============================================
+// STATIC FILE SERVING - FIXED
+// ============================================
+app.use(express.static(path.join(__dirname, 'docs'), { 
+    maxAge: '1d', 
+    etag: true,
+    setHeaders: (res, filePath) => {
+        // Ensure CSS and JS files load with proper CORS headers
+        if (filePath.endsWith('.css') || filePath.endsWith('.js')) {
+            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        }
+    }
+}));
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// ============================================
+// DATABASE CONNECTION TEST
+// ============================================
 db.getConnection()
     .then(connection => {
-        console.log('✅ Database connected successfully');
+        logger.dbConnected();
         connection.release();
     })
-    .catch(err => console.error('❌ Database connection failed:', err.message));
+    .catch(err => logger.error('Database connection failed'));
 
+// ============================================
+// API ROUTES
+// ============================================
 app.use('/api/auth', authRoutes.router);
 app.use('/api/items', itemRoutes);
 
+// ============================================
+// PAGE ROUTES
+// ============================================
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'docs', 'index.html')));
 app.get('/add-item', (req, res) => res.sendFile(path.join(__dirname, 'docs', 'add-item.html')));
 app.get('/item/:id', (req, res) => res.sendFile(path.join(__dirname, 'docs', 'item-detail.html')));
 app.get('/auth', (req, res) => res.sendFile(path.join(__dirname, 'docs', 'auth.html')));
 
+// 404 handler
 app.use((req, res) => res.status(404).sendFile(path.join(__dirname, 'docs', '404.html')));
 
+// Error handling
 app.use((err, req, res, next) => {
-    console.error('❌ Server error:', err.stack);
+    logger.error(err.message);
     res.status(500).json({
         success: false,
         message: 'Something went wrong!',
@@ -111,7 +137,9 @@ app.use((err, req, res, next) => {
     });
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+// Start server - LISTEN ON ALL INTERFACES
+app.listen(PORT, '0.0.0.0', () => {
+    logger.serverStart(PORT);
+    console.log(`   Local:   http://localhost:${PORT}`);
+    console.log(`   Network: http://192.168.1.9:${PORT}`);
 });

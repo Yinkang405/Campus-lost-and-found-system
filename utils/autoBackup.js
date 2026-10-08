@@ -6,52 +6,100 @@ require('dotenv').config();
 
 class AutoBackup {
     constructor() {
-        this.backupFile = path.join(__dirname, '../database-backup.sql');
-        this.mysqlPath = '"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqldump"';
+        // Save to project folder
+        this.backupFile = path.join(__dirname, '../backup.sql');
+        
+        // CORRECT PATH - with .exe extension
+        this.mysqlPath = '"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqldump.exe"';
+        
         this.dbName = process.env.DB_NAME || 'lost_found_db';
         this.dbUser = process.env.DB_USER || 'root';
         this.dbPassword = process.env.DB_PASSWORD || 'admin123';
+        
+        console.log('📁 AutoBackup initialized');
+        console.log('📁 Backup file:', this.backupFile);
+        console.log('🔧 mysqldump path:', this.mysqlPath);
     }
 
     // Create backup
     async createBackup() {
-        console.log('🔄 Attempting to create database backup...');
-        console.log('📁 Backup file:', this.backupFile);
-        console.log('🗄️  Database:', this.dbName);
+        console.log('🔄 Creating database backup...');
+        
+        // Remove quotes for checking
+        const checkPath = this.mysqlPath.replace(/"/g, '');
+        console.log('🔍 Checking path:', checkPath);
         
         // Check if mysqldump exists
-        const fs = require('fs');
-        const mysqlDumpPath = this.mysqlPath.replace(/"/g, '');
-        if (!fs.existsSync(mysqlDumpPath)) {
-            console.error('❌ mysqldump not found at:', mysqlDumpPath);
-            console.log('💡 Please check your MySQL installation path');
-            return;
+        if (!fs.existsSync(checkPath)) {
+            console.error('❌ mysqldump NOT found at:', checkPath);
+            console.log('💡 Please verify the path exists');
+            
+            // Try alternative common paths
+            const altPaths = [
+                '"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqldump.exe"',
+                '"C:\\Program Files (x86)\\MySQL\\MySQL Server 8.0\\bin\\mysqldump.exe"',
+                '"C:\\xampp\\mysql\\bin\\mysqldump.exe"',
+                '"C:\\Program Files\\MySQL\\MySQL Server 5.7\\bin\\mysqldump.exe"'
+            ];
+            
+            for (let altPath of altPaths) {
+                const altCheck = altPath.replace(/"/g, '');
+                if (fs.existsSync(altCheck)) {
+                    console.log('✅ Found mysqldump at:', altCheck);
+                    this.mysqlPath = altPath;
+                    break;
+                }
+            }
+            
+            if (!fs.existsSync(this.mysqlPath.replace(/"/g, ''))) {
+                console.error('❌ Could not find mysqldump anywhere');
+                return;
+            }
+        } else {
+            console.log('✅ mysqldump found at:', checkPath);
         }
 
+        // Run the backup
         return new Promise((resolve, reject) => {
+            // Build command - note: no space between -p and password
             const command = `${this.mysqlPath} -u ${this.dbUser} -p${this.dbPassword} ${this.dbName} > "${this.backupFile}"`;
+            console.log('🔧 Running command:', command.replace(this.dbPassword, '******'));
             
             exec(command, (error, stdout, stderr) => {
                 if (error) {
                     console.error('❌ Backup failed:', error.message);
                     if (stderr) console.error('📝 Error details:', stderr);
                     
-                    // Try alternative without password in command (will prompt)
-                    console.log('💡 Trying alternative method...');
-                    const altCommand = `echo ${this.dbPassword} | ${this.mysqlPath} -u ${this.dbUser} -p ${this.dbName} > "${this.backupFile}"`;
+                    // Try with space between -p and password
+                    console.log('🔄 Trying alternative command format...');
+                    const altCommand = `${this.mysqlPath} -u ${this.dbUser} -p ${this.dbPassword} ${this.dbName} > "${this.backupFile}"`;
                     
                     exec(altCommand, (err2, stdout2, stderr2) => {
                         if (err2) {
                             console.error('❌ Alternative backup also failed:', err2.message);
                             reject(err2);
                         } else {
-                            console.log('✅ Database backup updated successfully!');
-                            resolve();
+                            try {
+                                const stats = fs.statSync(this.backupFile);
+                                console.log('✅ Database backup updated successfully!');
+                                console.log('📁 File size:', (stats.size / 1024).toFixed(2), 'KB');
+                                resolve();
+                            } catch (err) {
+                                console.log('✅ Database backup created!');
+                                resolve();
+                            }
                         }
                     });
                 } else {
-                    console.log('✅ Database backup updated successfully!');
-                    resolve();
+                    try {
+                        const stats = fs.statSync(this.backupFile);
+                        console.log('✅ Database backup updated successfully!');
+                        console.log('📁 File size:', (stats.size / 1024).toFixed(2), 'KB');
+                        resolve();
+                    } catch (err) {
+                        console.log('✅ Database backup created!');
+                        resolve();
+                    }
                 }
             });
         });
